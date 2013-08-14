@@ -1,0 +1,11 @@
+{
+    "name"        : "nodechecker-api"
+  , "version"     : "0.0.1"
+  , "homepage"    : "http://nodechecker.com"
+  , "description" : "Nodechecker.com API"
+  , "dependencies": {
+      "express"           : "*"
+      , "redis"            : "*"
+    }
+  , "main"    : "./main.js"
+}
