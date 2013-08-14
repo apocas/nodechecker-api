@@ -14,15 +14,16 @@ app.configure(function(){
 
 app.get('/stats', api.stats);
 
-app.get('/api/timedout', api.timedout);
-app.get('/api/tarball', api.tarball);
-app.get('/api/ok', api.ok);
-app.get('/api/nok', api.nok);
-app.get('/api/withouttests', api.withouttests);
-app.get('/api/conflicts', api.conflicts);
-app.get('/api/info/:module', api.info);
+app.get('/stats/timedout', api.timedout);
+app.get('/stats/tarball', api.tarball);
+app.get('/stats/ok', api.ok);
+app.get('/stats/nok', api.nok);
+app.get('/stats/withouttests', api.withouttests);
+app.get('/stats/conflicts', api.conflicts);
+
+app.get('/info/:module', api.info);
 
 var port = process.env.PORT || 3201;
-console.log("Listening on " + port);
+console.log('Listening on ' + port);
 
 app.listen(port);
