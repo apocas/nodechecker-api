@@ -8,6 +8,7 @@ app.configure(function(){
 });
 
 app.configure(function(){
+  this.use(express.bodyParser());
   this.use(app.router);
 });
 
@@ -22,6 +23,8 @@ app.get('/stats/withouttests', api.withouttests);
 app.get('/stats/conflicts', api.conflicts);
 
 app.get('/info/:module', api.info);
+
+app.post('/test', api.test);
 
 var port = process.env.PORT || 3201;
 console.log('Listening on ' + port);

@@ -6,6 +6,7 @@
   , "dependencies": {
       "express"           : "*"
       , "redis"            : "*"
+      , "dnode"              : "*"
     }
   , "main"    : "./main.js"
 }

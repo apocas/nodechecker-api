@@ -1,7 +1,31 @@
-var redis = require("redis");
+var redis = require("redis"),
+  dnode = require('dnode');
 
 var redis_client = redis.createClient(7556, '127.0.0.1');
 
+
+exports.test = function (req, res) {
+  console.log(req.body);
+  var module = req.body.module || null;
+  var repo = req.body.repository || null;
+  var branch = req.body.branch || null;
+
+  var d = dnode.connect(5004, process.argv[2]);
+  d.on('remote', function (remote) {
+    console.log('API test request: ' + module + ' ' + repo + ' ' + branch);
+    if(module) {
+      remote.testModule(module, repo, function (result) {
+        console.log('DONE ' + module);
+        res.json(result);
+      });
+    } else {
+      remote.testRepo(repo, branch, function (result) {
+        console.log('DONE ' + repo);
+        res.json(result);
+      });
+    }
+  });
+};
 
 exports.stats = function (req, res) {
   redis_client.multi()
