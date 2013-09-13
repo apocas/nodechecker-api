@@ -7,6 +7,7 @@
       "express"           : "*"
       , "redis"            : "*"
       , "dnode"              : "*"
+      , "nodechecker-crawler": "apocas/nodechecker-crawler"
     }
   , "main"    : "./main.js"
 }

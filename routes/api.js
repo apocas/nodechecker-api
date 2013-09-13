@@ -1,5 +1,6 @@
 var redis = require("redis"),
-  dnode = require('dnode');
+  dnode = require('dnode'),
+  Runner = require('nodechecker-crawler/lib/runner');
 
 var redis_client = redis.createClient(7556, '127.0.0.1');
 
@@ -13,6 +14,30 @@ exports.test = function (req, res) {
   var d = dnode.connect(5004, process.argv[2]);
   d.on('remote', function (remote) {
     console.log('API test request: ' + module + ' ' + repo + ' ' + branch);
+    if (!repo) {
+      // Without an alternative repo, this should be identical to what the
+      // `nodechecker-crawler`'s `Runner` class does, so let's use that.
+      var runner = new Runner(remote, module, redis_client);
+
+      // HACK(schoon) - Using this hook to pluck out the result. A refactor
+      // should remove this.
+      runner.done = function (result) {
+        this.result = result;
+        Runner.prototype.call(this, result);
+      };
+
+      // End HACK, start AWESOME!
+      runner
+        .on('done', function () {
+          // TODO(schoon) - This is the same across all three code paths, and
+          // should probably be placed in a shared function.
+          console.log('DONE ' + module);
+          res.json(runner.result);
+        })
+        .work();
+      return;
+    }
+
     if(module) {
       remote.testModule(module, repo, function (result) {
         console.log('DONE ' + module);
