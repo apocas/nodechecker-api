@@ -8,6 +8,7 @@
       , "redis"            : "*"
       , "dnode"              : "*"
       , "nodechecker-crawler": "apocas/nodechecker-crawler"
+      , "npm-web-api"        : "~0.1.1"
     }
   , "main"    : "./main.js"
 }
