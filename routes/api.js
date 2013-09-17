@@ -1,5 +1,7 @@
 var redis = require("redis"),
-  dnode = require('dnode');
+  dnode = require('dnode'),
+  Runner = require('nodechecker-crawler/lib/runner'),
+  npmapi = require('npm-web-api');
 
 var redis_client = redis.createClient(7556, '127.0.0.1');
 
@@ -13,6 +15,22 @@ exports.test = function (req, res) {
   var d = dnode.connect(5004, process.argv[2]);
   d.on('remote', function (remote) {
     console.log('API test request: ' + module + ' ' + repo + ' ' + branch);
+    if (!repo) {
+      // Without an alternative repo, this should be identical to what the
+      // `nodechecker-crawler`'s `Runner` class does, so let's use that.
+      npmapi.getLatest(module, function (err, packageJson) {
+        new Runner(remote, packageJson, redis_client)
+          .on('done', function (result) {
+            // TODO(schoon) - This is the same across all three code paths, and
+            // should probably be placed in a shared function.
+            console.log('DONE ' + module);
+            res.json(result);
+          })
+          .work();
+      });
+      return;
+    }
+
     if(module) {
       remote.testModule(module, repo, function (result) {
         console.log('DONE ' + module);
