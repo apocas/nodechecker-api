@@ -1,8 +1,24 @@
-var redis = require("redis"),
-  dnode = require('dnode');
+require('colors');
 
-var redis_client = redis.createClient(7556, '127.0.0.1');
+var redis = require('redis'),
+  DuplexEmitter = require('duplex-emitter'),
+  reconnect     = require('reconnect');
 
+var redisp = process.env.REDIS_PORT || 6379;
+var redish = process.env.REDIS_HOST || '127.0.0.1';
+
+var redis_client = redis.createClient(redisp, redish);
+var remote;
+
+reconnect(function (socket) {
+  console.log('Connected to dispatcher'.green);
+  remote = DuplexEmitter(socket);
+
+  remote.on('done', function(data) {
+    res.json(data.result);
+    socket.end();
+  });
+}).connect(process.env.BALANCER_PORT || 5000, process.env.BALANCER_HOST || '127.0.0.1');
 
 exports.test = function (req, res) {
   console.log(req.body);
@@ -10,21 +26,12 @@ exports.test = function (req, res) {
   var repo = req.body.repository || null;
   var branch = req.body.branch || null;
 
-  var d = dnode.connect(5004, process.argv[2]);
-  d.on('remote', function (remote) {
-    console.log('API test request: ' + module + ' ' + repo + ' ' + branch);
-    if(module) {
-      remote.testModule(module, repo, function (result) {
-        console.log('DONE ' + module);
-        res.json(result);
-      });
-    } else {
-      remote.testRepo(repo, branch, function (result) {
-        console.log('DONE ' + repo);
-        res.json(result);
-      });
-    }
-  });
+  console.log('API test request: ' + module + ' ' + repo + ' ' + branch);
+  if(module) {
+    remote.emit('test', {'module': module, 'repository': repo});
+  } else {
+    remote.emit('test', {'repository': repo, 'branch': branch});
+  }
 };
 
 exports.stats = function (req, res) {

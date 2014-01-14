@@ -6,7 +6,9 @@
   , "dependencies": {
       "express"           : "*"
       , "redis"            : "*"
-      , "dnode"              : "*"
+      , "duplex-emitter"              : "*"
+      , "reconnect"              : "*"
+      , "colors"              : "*"
     }
   , "main"    : "./main.js"
 }
