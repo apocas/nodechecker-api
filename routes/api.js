@@ -1,24 +1,33 @@
 require('colors');
 
-var redis = require('redis'),
+var MongoClient = require('mongodb').MongoClient,
   DuplexEmitter = require('duplex-emitter'),
-  reconnect     = require('reconnect');
+  reconnect     = require('reconnect'),
+  format = require('util').format;
 
-var redisp = process.env.REDIS_PORT || 6379;
-var redish = process.env.REDIS_HOST || '127.0.0.1';
+var mongo_ip = process.env.MONGODB_HOST || '127.0.0.1';
+var mongo_port = process.env.MONGODB_PORT || 27017;
+var remote, mdb, mcollection, rcollection;
 
-var redis_client = redis.createClient(redisp, redish);
-var remote;
+MongoClient.connect(format("mongodb://%s:%s/nodechecker", mongo_ip, mongo_port), function(err, db) {
+  if(err) throw err;
 
-reconnect(function (socket) {
-  console.log('Connected to dispatcher'.green);
-  remote = DuplexEmitter(socket);
+  mdb = db;
 
-  remote.on('done', function(data) {
-    res.json(data.result);
-    socket.end();
-  });
-}).connect(process.env.BALANCER_PORT || 5000, process.env.BALANCER_HOST || '127.0.0.1');
+  mcollection = mdb.collection('modules');
+  rcollection = mdb.collection('runs');
+
+  reconnect(function (socket) {
+    console.log('Connected to dispatcher'.green);
+    remote = DuplexEmitter(socket);
+
+    remote.on('done', function(data) {
+      res.json(data.result);
+      socket.end();
+    });
+  }).connect(process.env.BALANCER_PORT || 5000, process.env.BALANCER_HOST || '127.0.0.1');
+});
+
 
 exports.test = function (req, res) {
   console.log(req.body);
@@ -35,124 +44,58 @@ exports.test = function (req, res) {
 };
 
 exports.stats = function (req, res) {
-  redis_client.multi()
-    .smembers('ok')
-    .smembers('nok')
-    .smembers('rfailed')
-    .smembers('failed')
-    .smembers('inexistent')
-    .hlen('times')
-    .smembers('running')
-    .exec(function (err, replies) {
-      res.json({
-        ok: replies[0].length,
-        nok: replies[1].length,
-        rfailed: replies[2].length,
-        failed: replies[3].length,
-        inexistent: replies[4].length,
-        total: replies[5],
-        running: replies[6]
-      });
-    });
-};
-
-exports.conflicts = function (req, res) {
-  redis_client.multi()
-    .smembers('ok')
-    .smembers('nok')
-    .smembers('rfailed')
-    .smembers('failed')
-    .smembers('inexistent')
-    .hkeys('times')
-    .exec(function (err, replies) {
-      var ret = [];
-      for (var i = 0; i < replies[5].length; i++) {
-        var aux = 0;
-        var i1 = contains(replies[5][i], replies[0]);
-        aux += i1;
-        var i2 = contains(replies[5][i], replies[1]);
-        aux += i2;
-        var i3 = contains(replies[5][i], replies[2]);
-        aux += i3;
-        var i4 = contains(replies[5][i], replies[3]);
-        aux += i4;
-        var i5 = contains(replies[5][i], replies[4]);
-        aux += i5;
-
-        if(aux > 1) {
-          ret.push({'module': replies[5][i], 'count': aux, 'details': [{'ok': i1}, {'nok': i2}, {'rfailed': i3}, {'failed': i4}, {'inexistent': i5}]});
-        }
-      };
-      res.json(ret);
-    });
-};
-
-function contains(obj, array) {
-  for (var i = 0; i < array.length; i++) {
-    if(array[i] == obj) {
-      return 1;
+  mcollection.group(['status'], {}, {count: 0}, function reduce(record, memo) {
+    memo.count++;
+  }, function(err, items){
+    var result = {};
+    for (var i = items.length - 1; i >= 0; i--) {
+      result['' + items[i].status] = items[i].count;
     }
-  }
-  return 0;
-}
-
-exports.timedout = function (req, res) {
-  redis_client.smembers('failed', function(err, members) {
-    res.json(members);
+    res.json(result);
   });
 };
 
-exports.tarball = function (req, res) {
-  redis_client.smembers('rfailed', function(err, members) {
-    res.json(members);
+exports.timedout = function (req, res) {
+  mcollection.find({status: 'timedout'},{name: 1, _id: 0}).toArray(function(err, docs) {
+    res.json(docs);
+  });
+};
+
+exports.failed = function (req, res) {
+  mcollection.find({status: 'failed'},{name: 1, _id: 0}).toArray(function(err, docs) {
+    res.json(docs);
   });
 };
 
 exports.ok = function (req, res) {
-  redis_client.smembers('ok', function(err, members) {
-    res.json(members);
+  mcollection.find({status: 'ok'},{name: 1, _id: 0}).toArray(function(err, docs) {
+    res.json(docs);
   });
 };
 
 exports.nok = function (req, res) {
-  redis_client.smembers('nok', function(err, members) {
-    res.json(members);
+  mcollection.find({status: 'nok'},{name: 1, _id: 0}).toArray(function(err, docs) {
+    res.json(docs);
   });
 };
 
 exports.withouttests = function (req, res) {
-  redis_client.smembers('inexistent', function(err, members) {
-    res.json(members);
+  mcollection.find({status: 'nottested'},{name: 1, _id: 0}).toArray(function(err, docs) {
+    res.json(docs);
   });
 };
-
 
 exports.info = function (req, res) {
   var module = req.params.module;
 
-  redis_client.multi()
-    .sismember(['ok', module])
-    .sismember(['nok', module])
-    .sismember(['rfailed', module])
-    .sismember(['failed', module])
-    .sismember(['inexistent', module])
-    .hget(['times', module])
-    .hget(['output', module])
-    .exec(function (err, replies) {
-      var type = null;
-      if(replies[0] == 1) {
-        type = 'ok';
-      } else if(replies[1] == 1) {
-        type = 'nok';
-      } else if(replies[2] == 1) {
-        type = 'tarball';
-      } else if(replies[3] == 1) {
-        type = 'timedout';
-      } else if(replies[4] == 1) {
-        type = 'nottested';
-      }
-
-      res.json({'module': module, 'status': type, 'output': replies[6], 'tested': replies[5]});
-    });
+  mcollection.findOne({name: module}, function(err, doc) {
+    if(doc) {
+      rcollection.find({module: module}).limit(3).toArray(function(err, docs) {
+        res.json({'module': module, 'status': doc.status, 'runs': docs});
+      });
+    } else {
+      res.json({});
+    }
+  });
 };
 

@@ -16,11 +16,10 @@ app.configure(function(){
 app.get('/stats', api.stats);
 
 app.get('/stats/timedout', api.timedout);
-app.get('/stats/tarball', api.tarball);
+app.get('/stats/failed', api.failed);
 app.get('/stats/ok', api.ok);
 app.get('/stats/nok', api.nok);
 app.get('/stats/withouttests', api.withouttests);
-app.get('/stats/conflicts', api.conflicts);
 
 app.get('/info/:module', api.info);
 
