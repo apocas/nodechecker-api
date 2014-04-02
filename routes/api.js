@@ -90,12 +90,11 @@ exports.info = function (req, res) {
 
   mcollection.findOne({name: module}, function(err, doc) {
     if(doc) {
-      rcollection.find({module: module}).limit(3).toArray(function(err, docs) {
-        res.json({'module': module, 'status': doc.status, 'runs': docs});
+      rcollection.find({module: module}).sort({_id: -1}).limit(3).toArray(function(err, docs) {
+        res.json({'module': module, 'status': doc.status, 'dependencies': doc.dependencies, 'runs': docs});
       });
     } else {
       res.json({});
     }
   });
 };
-
