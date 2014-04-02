@@ -90,8 +90,13 @@ exports.info = function (req, res) {
 
   mcollection.findOne({name: module}, function(err, doc) {
     if(doc) {
+      var deps = doc.dependencies;
+      for(var i = 0; i< deps.length; i++) {
+        deps[i] = deps[i].split('\uff0E').join('.');
+      }
+
       rcollection.find({module: module}).sort({_id: -1}).limit(3).toArray(function(err, docs) {
-        res.json({'module': module, 'status': doc.status, 'dependencies': doc.dependencies, 'runs': docs});
+        res.json({'module': module, 'status': doc.status, 'dependencies': deps, 'runs': docs});
       });
     } else {
       res.json({});
