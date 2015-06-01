@@ -21,7 +21,7 @@ app.get('/stats/ok', api.ok);
 app.get('/stats/nok', api.nok);
 app.get('/stats/withouttests', api.withouttests);
 
-app.get('/info/:module', api.info);
+app.get('/info/:module*', api.info);
 
 app.post('/test', api.test);
 
